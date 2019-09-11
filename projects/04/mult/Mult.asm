@@ -17,6 +17,9 @@
   @m
   M=D // m = R1
 
+  @R2
+  M=0 // R2 = 0
+
   @i
   M=0 // i = 0
 
@@ -35,7 +38,7 @@
   D=M
   @n
   D=D+M
-  @MULT
+  @mult
   M=D
   @i
   M=M+1
