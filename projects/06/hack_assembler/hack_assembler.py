@@ -16,6 +16,9 @@ class HackAssembler():
         self.pattern = re.compile(
             r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
             re.DOTALL | re.MULTILINE)
+
+        self.a_instruction = '0{value:>015b}'
+        self.variable_number = 16
         self.addressing_symbols = {
             'SP' : 0,
             'LCL' : 1,
@@ -42,9 +45,7 @@ class HackAssembler():
             'KBD' : 24576,
         }
 
-        self.a_instruction = '0{value:>015b}'
-        self.variable_number = 16
-
+        self.c_instruction = '111{comp}{dest}{jump}'
         self.comp_symbols = {
             '0' : '0101010',
             '1' : '0111111',
@@ -75,6 +76,27 @@ class HackAssembler():
             'D&M' : '1000000',
             'D|M' : '1010101',
         }
+        self.dest_symbols = {
+            'null' : '000',
+            'M' : '001',
+            'D' : '010',
+            'MD' : '011',
+            'A' : '100',
+            'AM' : '101',
+            'AD' : '110',
+            'AMD' : '111',
+        }
+        self.jump_symbols = {
+            'null' : '000',
+            'JGT' : '001',
+            'JEQ' : '010',
+            'JGE' : '011',
+            'JLT' : '100',
+            'JNE' : '101',
+            'JLE' : '110',
+            'JMP' : '111',
+        }
+
     def _remove_comments_and_whitespace(self,line):
         line = re.sub(self.pattern, '', line)
         line = line.strip()
@@ -101,28 +123,40 @@ class HackAssembler():
         asm = [line for line in asm if line[0] != '(']
 
         hack_path = asm_path.with_suffix('.hack')
-        print(hack_path)
-
-        for line in asm:
-            first_char = line[0]
-            if first_char == "@":
-                symbol = line[1:]
-                try:
-                    str = self.addressing_symbols[symbol]
-                except KeyError:
-                    str = symbol
-                try:
-                    value = int(str)
-                except ValueError:
-                    self.addressing_symbols.update({symbol : self.variable_number})
-                    value = self.variable_number
-                    self.variable_number += 1
-                print(f'a | {value}')
-                print(self.a_instruction.format(value=value))
-            else:
-                instruction = re.split('=|;', line)
-                print(f'c | {instruction}')
-        print(self.addressing_symbols)
+        with hack_path.open(mode='w') as hack_file:
+            for line in asm:
+                first_char = line[0]
+                if first_char == "@":
+                    symbol = line[1:]
+                    try:
+                        str = self.addressing_symbols[symbol]
+                    except KeyError:
+                        str = symbol
+                    try:
+                        value = int(str)
+                    except ValueError:
+                        self.addressing_symbols.update({symbol : self.variable_number})
+                        value = self.variable_number
+                        self.variable_number += 1
+                    print(self.a_instruction.format(value=value), file=hack_file)
+                else:
+                    instruction = re.split('=|;', line)
+                    if '=' not in line:
+                        dest = 'null'
+                        comp = instruction[0]
+                        jump = instruction[1]
+                    elif ';' not in line:
+                        dest = instruction[0]
+                        comp = instruction[1]
+                        jump = 'null'
+                    else:
+                        dest = instruction[0]
+                        comp = instruction[1]
+                        jump = instruction[2]
+                    dest = self.dest_symbols[dest]
+                    comp = self.comp_symbols[comp]
+                    jump = self.jump_symbols[jump]
+                    print(self.c_instruction.format(dest=dest,comp=comp,jump=jump), file=hack_file)
 
 
 # -----------------------------------------------------------------------------------------
